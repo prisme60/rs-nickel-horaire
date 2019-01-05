@@ -1,22 +1,17 @@
-#[macro_use] extern crate nickel;
-
-use nickel::{Nickel, HttpRouter};
-
-extern crate horaire;
-
-use horaire::timelines::TimeLine;
-use horaire::source::transilien::transilien;
-use horaire::source::sncf::sncf;
-use horaire::source::ratp::ratp;
-// use horaire::errors::*;
+use horaire::{
+    source::{ratp::ratp, sncf::sncf, transilien::transilien},
+    timelines::TimeLine,
+};
+use nickel::{HttpRouter, Nickel, *};
 
 fn get_time_lines_html<'a, I>(time_lines: I) -> String
 where
     I: Iterator<Item = &'a TimeLine>,
 {
-    let mut strings = time_lines.fold(String::from("<html><head><meta charset=\"UTF-8\"></head><body>"), |acc, ref mut time_line| {
-                        acc + &format!("{}<p>", time_line)
-                    });
+    let mut strings = time_lines.fold(
+        String::from("<html><head><meta charset=\"UTF-8\"></head><body>"),
+        |acc, ref mut time_line| acc + &format!("{}<p>", time_line),
+    );
     strings.pop();
     strings.push_str("</body></html>");
     strings
@@ -29,7 +24,7 @@ fn rt_transilien(station: &str) -> String {
 }
 
 //#[get("/ratp/<line>/<station>", format = "text/html")]
-fn rt_ratp(line:&str, station: &str) -> String {
+fn rt_ratp(line: &str, station: &str) -> String {
     get_time_lines_html(ratp(line, station).unwrap().iter())
 }
 
@@ -45,10 +40,25 @@ fn rt_sncf_arriv(station: &str) -> String {
 
 fn main() {
     let mut server = Nickel::new();
-    server.get("/transilien/:station", middleware!( |request| rt_transilien(request.param("station").unwrap_or(""))));
-    server.get("/ratp/:line/:station", middleware!( |request| rt_ratp(request.param("line").unwrap_or(""), request.param("station").unwrap_or(""))));
-    server.get("/sncf/dest/:station", middleware!( |request| rt_sncf_dest(request.param("station").unwrap_or(""))));
-    server.get("/sncf/arriv/:station", middleware!( |request| rt_sncf_arriv(request.param("station").unwrap_or(""))));
+    server.get(
+        "/transilien/:station",
+        middleware!(|request| rt_transilien(request.param("station").unwrap_or(""))),
+    );
+    server.get(
+        "/ratp/:line/:station",
+        middleware!(|request| rt_ratp(
+            request.param("line").unwrap_or(""),
+            request.param("station").unwrap_or("")
+        )),
+    );
+    server.get(
+        "/sncf/dest/:station",
+        middleware!(|request| rt_sncf_dest(request.param("station").unwrap_or(""))),
+    );
+    server.get(
+        "/sncf/arriv/:station",
+        middleware!(|request| rt_sncf_arriv(request.param("station").unwrap_or(""))),
+    );
     server.get("**", middleware!("Hello World"));
     server.listen("127.0.0.1:6767").unwrap();
 }
